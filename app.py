@@ -1,7 +1,9 @@
 
 import mysql.connector
+from collections import namedtuple
 
 # shows all available tunings
+# GOOD
 def show_available_tunings(cursor):
     query = "SELECT tunings.tuning_name, tunings.strings, tunings.tuning, users.user_name, tunings.likes FROM users INNER JOIN tunings ON users.user_id = tunings.user_id;"
     cursor.execute(query)
@@ -14,6 +16,7 @@ def show_available_tunings(cursor):
     print(" ------------------------------------------------------------------------------------")
 
 # shows all available scales
+# GOOD
 def show_available_scales(cursor):
     query = "SELECT scales.scale_name, scales.steps, users.user_name, scales.likes FROM users INNER JOIN scales ON users.user_id = scales.user_id;"
     cursor.execute(query)
@@ -25,6 +28,7 @@ def show_available_scales(cursor):
     print(" ------------------------------------------------------------")
 
 # shows all user data
+# GOOD
 def show_user_data(cursor):
     query = "SELECT users.user_name AS name, SUM(like_table.likes) AS likes FROM (SELECT scales.user_id AS user, scales.likes AS likes FROM scales UNION ALL SELECT tunings.user_id, tunings.likes FROM tunings) AS like_table RIGHT JOIN users ON users.user_id = like_table.user GROUP BY like_table.user;"
     cursor.execute(query)
@@ -69,9 +73,27 @@ def add_tuning(cursor, conn, user_id):
         print("I'm sorry, that tuning has already been entered")
         return
     string_number = int(input("please enter the number of strings -> "))
-    tuning = input("please enter the tuning -> ")
+
+    tuning_notes = []
+
+    for i in range(string_number):
+        print("please enter note of ", str(i+1), " string -> ", end="")
+        string_note = input()
+        tuning_notes.append(string_note)
+
+    tuning_num_list = tuning_to_nums(tuning_notes)
+    if not tuning_num_list:
+        print("I'm sorry, one or more notes entered are invalid.")
+        return
+
+    tuning_as_csv_string = ""
+    for i in tuning_num_list:
+        tuning_as_csv_string = tuning_as_csv_string + str(i) + ","
+    
+    tuning_as_csv_string = tuning_as_csv_string[0:len(tuning_as_csv_string)-1]
+   
     sql = "INSERT INTO tunings (tuning_name, user_id, tuning, likes, strings) VALUES (%s, %s, %s, %s, %s);"
-    vals = [tuning_name, user_id, tuning, 0, string_number]
+    vals = [tuning_name, user_id, tuning_as_csv_string, 0, string_number]
     cursor.execute(sql, vals)
     conn.commit()
 
@@ -175,6 +197,31 @@ def set_scale(cursor, scale_name):
     else:
         return scale
 
+def tuning_to_nums(notes):
+    nums = []
+    for i in notes:
+        if i in notesToNum.keys():
+            nums.append(notesToNum[i])
+        elif isinstance(i, int):
+            if i <= 12 and i >= 1:
+                nums.append(i)
+        else:
+            return False
+    return nums
+
+def tuning_to_notes(nums):
+    notes = []
+    for i in nums:
+        if i in numsToNotes.keys():
+            notes.append(numsToNotes[i])
+        elif isinstance(i, str):
+            if i in notesToNum.keys():
+                notes.append(numsToNotes[notesToNum[i]])
+        else:
+            return False
+    return notes
+
+
 # class for session data
 class SessionData:
     def __init__(self):
@@ -231,10 +278,15 @@ numsToNotes = {
     12: "g#"
 }
 
+TuningTuple = namedtuple("TuningTuple", "name uploader notes numbers strings")
+standard = TuningTuple("standard", "Alex", ['a',5,'c','d',1,'f'],[1,2,3,4,5,6], 6)
+
+print(tuning_to_notes(standard.notes))
+
 session = SessionData()
 
 session.set_id(4)
-print(set_tuning(session.cursor, "standard"))
+add_tuning(session.cursor, session.connection, session.id)
 
 # print(add_user(session.cursor, session.connection, "joe", "123"))
 
@@ -272,60 +324,60 @@ print(set_tuning(session.cursor, "standard"))
 #         else:
 #             print("User name is already taken. Please try again.")
 
-option = ""
-while option != "Q":
-    print("Options: ")
-    print("\"VT\" to view all tunings")
-    print("\"VS\" to view all scales")
-    print("\"VU\" to view all users")
-    print("\"ET\" to enter a new tuning")
-    print("\"ES\" to enter a new scale")
-    print("\"MT\" to view your tunings")
-    print("\"MS\" to view your scales")
-    print("\"ST\" to set a tuning")
-    print("\"SS\" to set a scale")
-    print("\"RT\" to rename one of your tunings")
-    print("\"RS\" to rename one of your scales")
-    print("\"DT\" to delete one of your tunings")
-    print("\"DS\" to delete one of your scales")
-    print("\"Q\" to quit")
-    option = input("-> ").upper()
+# option = ""
+# while option != "Q":
+#     print("Options: ")
+#     print("\"VT\" to view all tunings")
+#     print("\"VS\" to view all scales")
+#     print("\"VU\" to view all users")
+#     print("\"ET\" to enter a new tuning")
+#     print("\"ES\" to enter a new scale")
+#     print("\"MT\" to view your tunings")
+#     print("\"MS\" to view your scales")
+#     print("\"ST\" to set a tuning")
+#     print("\"SS\" to set a scale")
+#     print("\"RT\" to rename one of your tunings")
+#     print("\"RS\" to rename one of your scales")
+#     print("\"DT\" to delete one of your tunings")
+#     print("\"DS\" to delete one of your scales")
+#     print("\"Q\" to quit")
+#     option = input("-> ").upper()
 
-    if option == "VT":
-        print("in VT")
-        show_available_tunings(session.cursor)
+#     if option == "VT":
+#         print("in VT")
+#         show_available_tunings(session.cursor)
 
-    elif option == "VS":
-        show_available_scales(session.cursor)
+#     elif option == "VS":
+#         show_available_scales(session.cursor)
 
-    elif option == "VU":
-        show_user_data(session.cursor)
+#     elif option == "VU":
+#         show_user_data(session.cursor)
 
-    elif option == "ET":
-        add_tuning(session.cursor, session.connection, session.id)
+#     elif option == "ET":
+#         add_tuning(session.cursor, session.connection, session.id)
 
-    elif option == "ES":
-        add_scale(session.cursor, session.connection, session.id)
+#     elif option == "ES":
+#         add_scale(session.cursor, session.connection, session.id)
 
-    elif option == "MT":
-        show_users_tunings(session.cursor, session.id)
+#     elif option == "MT":
+#         show_users_tunings(session.cursor, session.id)
 
-    elif option == "MS":
-        show_users_scales(session.cursor, session.id)
+#     elif option == "MS":
+#         show_users_scales(session.cursor, session.id)
 
-    elif option == "ST":
-        tuning_name = input("Please enter tuning name -> ")
-        set_tuning(session.cursor, tuning_name)
+#     elif option == "ST":
+#         tuning_name = input("Please enter tuning name -> ")
+#         set_tuning(session.cursor, tuning_name)
 
-    elif option == "SS":
-        scale_name = input("Please enter scale name -> ")
-        set_scale(session.cursor, scale_name)
+#     elif option == "SS":
+#         scale_name = input("Please enter scale name -> ")
+#         set_scale(session.cursor, scale_name)
 
-    elif option == "RT":
-        rename_tuning(session.cursor, session.connection, session.id)
+#     elif option == "RT":
+#         rename_tuning(session.cursor, session.connection, session.id)
 
-    elif option == "RS":
-        rename_scale(session.cursor, session.connection, session.id)
+#     elif option == "RS":
+#         rename_scale(session.cursor, session.connection, session.id)
 
 #     elif option == "DT":
 #         delete_tuning(session.cursor, session.connection, session.id)
